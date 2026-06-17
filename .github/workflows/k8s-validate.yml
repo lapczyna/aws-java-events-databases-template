@@ -1,0 +1,39 @@
+name: Kubernetes Manifest Validation
+
+on:
+  push:
+    paths:
+      - "k8s/**"
+    branches: ["main"]
+  pull_request:
+    paths:
+      - "k8s/**"
+
+jobs:
+  validate:
+    name: Validate K8s Manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kubeval
+        run: |
+          wget -q https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin
+
+      - name: Validate all Kubernetes manifests
+        run: |
+          kubeval --strict --ignore-missing-schemas k8s/*.yml
+
+      - name: Install kubeconform (secondary validation)
+        run: |
+          wget -q https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform-linux-amd64.tar.gz
+          sudo mv kubeconform /usr/local/bin
+
+      - name: Run kubeconform
+        run: |
+          kubeconform -summary -output pretty k8s/*.yml
