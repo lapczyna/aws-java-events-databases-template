@@ -2,11 +2,15 @@ package com.enterprise.adplatform.integration;
 
 import com.enterprise.adplatform.dto.CampaignRequest;
 import com.enterprise.adplatform.entity.Campaign;
+import com.enterprise.adplatform.messaging.kafka.KafkaProducerService;
+import com.enterprise.adplatform.messaging.sqs.SqsConsumerService;
+import com.enterprise.adplatform.messaging.sqs.SqsProducerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +28,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Campaign Controller Integration Tests")
 class CampaignControllerIntegrationTest {
+
+    // Messaging beans are mocked so no SQS/Kafka infrastructure is required in CI.
+    // SqsConsumerService is mocked to prevent its @Scheduled poller from running.
+    @MockBean SqsProducerService sqsProducerService;
+    @MockBean SqsConsumerService sqsConsumerService;
+    @MockBean KafkaProducerService kafkaProducerService;
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;

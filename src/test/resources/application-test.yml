@@ -24,6 +24,8 @@ spring:
       enable-auto-commit: false
     producer:
       acks: all
+    listener:
+      auto-startup: false  # prevent KafkaConsumerService from connecting on context startup
 
 aws:
   region: us-east-1
