@@ -25,13 +25,13 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      # compile + surefire only; failsafe (integration/BDD) runs in the next job
       - name: Compile and run unit tests
         run: mvn test -B --no-transfer-progress
 
       - name: Publish Unit Test Results
         uses: dorny/test-reporter@v1
         if: always()
+        continue-on-error: true
         with:
           name: Unit Test Results
           path: target/surefire-reports/*.xml
@@ -57,16 +57,29 @@ jobs:
           cache: maven
 
       # failsafe picks up **/*IntegrationTest.java, **/*IT.java, and **/CucumberRunner.java
-      # as configured in pom.xml — no extra flags needed
+      # as configured in pom.xml. CucumberRunner emits its own JUnit XML via the
+      # junit:target/cucumber-reports/junit.xml plugin (see CucumberRunner.java).
       - name: Run integration tests and Cucumber BDD tests
         run: mvn failsafe:integration-test failsafe:verify -B --no-transfer-progress
 
-      - name: Publish Integration & BDD Test Results
+      # Integration test XML from failsafe (excludes CucumberRunner — its XML is separate)
+      - name: Publish Integration Test Results
         uses: dorny/test-reporter@v1
         if: always()
+        continue-on-error: true
         with:
-          name: Integration & BDD Test Results
+          name: Integration Test Results
           path: target/failsafe-reports/*.xml
+          reporter: java-junit
+
+      # Cucumber emits proper JUnit XML via its junit plugin — use that for reporting
+      - name: Publish Cucumber BDD Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        continue-on-error: true
+        with:
+          name: Cucumber BDD Test Results
+          path: target/cucumber-reports/junit.xml
           reporter: java-junit
 
       - name: Upload Cucumber HTML Report
