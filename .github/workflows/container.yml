@@ -88,7 +88,14 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v4
-        # Only run when Trivy actually completed and wrote the SARIF file.
-        if: always() && steps.trivy.outcome != 'skipped' && hashFiles('trivy-results.sarif') != ''
+        # Skip on PRs: GITHUB_TOKEN has restricted scope on pull_request events,
+        # causing "Resource not accessible by integration". SARIF results are only
+        # meaningful on the default branch anyway.
+        if: >
+          always() &&
+          github.event_name != 'pull_request' &&
+          steps.trivy.outcome != 'skipped' &&
+          hashFiles('trivy-results.sarif') != ''
+        continue-on-error: true
         with:
           sarif_file: trivy-results.sarif
