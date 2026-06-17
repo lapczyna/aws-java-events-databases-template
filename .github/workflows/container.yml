@@ -70,7 +70,7 @@ jobs:
 
       - name: Run Trivy vulnerability scan
         id: trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           # On PRs the image is in the local daemon (load: true above).
           # On push/tag it was pushed to GHCR. Either way this ref resolves.
