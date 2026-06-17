@@ -70,14 +70,20 @@ jobs:
 
       - name: Run Trivy vulnerability scan
         id: trivy
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          # On PRs the image is in the local daemon (load: true above).
-          # On push/tag it was pushed to GHCR. Either way this ref resolves.
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
+        # Run Trivy directly as a Docker container to avoid action version chain issues.
+        # On PRs the image is in the local daemon (load: true above); on push it was
+        # pushed to GHCR. Trivy checks the local daemon first, then pulls from remote.
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${{ github.workspace }}:/work" \
+            -w /work \
+            aquasec/trivy:latest image \
+            --exit-code 0 \
+            --format sarif \
+            --output trivy-results.sarif \
+            --severity CRITICAL,HIGH \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
         continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
