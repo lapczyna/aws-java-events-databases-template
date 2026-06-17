@@ -55,18 +55,25 @@ jobs:
             type=sha,format=short
 
       - name: Build Docker image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
+          # On PRs: load into local daemon for Trivy scan (image is not pushed to registry).
+          # On push/tag: push to GHCR (load: false avoids buildx push+load conflict).
           push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        id: trivy
+        uses: aquasecurity/trivy-action@0.28.0
         with:
+          # On PRs the image is in the local daemon (load: true above).
+          # On push/tag it was pushed to GHCR. Either way this ref resolves.
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           format: sarif
           output: trivy-results.sarif
@@ -74,7 +81,8 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        # Only run when Trivy actually completed and wrote the SARIF file.
+        if: always() && steps.trivy.outcome != 'skipped' && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: trivy-results.sarif
