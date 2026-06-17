@@ -108,7 +108,7 @@ resource "aws_eks_node_group" "this" {
   subnet_ids      = var.private_subnet_ids
 
   instance_types = var.node_instance_types
-  ami_type       = "AL2_ARM_64"  # Graviton2/3 ARM — lower cost
+  ami_type       = "AL2_ARM_64" # Graviton2/3 ARM — lower cost
 
   scaling_config {
     desired_size = var.node_desired_size

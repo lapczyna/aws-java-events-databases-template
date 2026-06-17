@@ -21,14 +21,14 @@ module "vpc" {
 module "eks" {
   source = "./modules/eks"
 
-  name_prefix             = local.name_prefix
-  cluster_version         = var.eks_cluster_version
-  vpc_id                  = module.vpc.vpc_id
-  private_subnet_ids      = module.vpc.private_subnet_ids
-  node_desired_size       = var.eks_node_desired_size
-  node_min_size           = var.eks_node_min_size
-  node_max_size           = var.eks_node_max_size
-  node_instance_types     = var.eks_node_instance_types
+  name_prefix         = local.name_prefix
+  cluster_version     = var.eks_cluster_version
+  vpc_id              = module.vpc.vpc_id
+  private_subnet_ids  = module.vpc.private_subnet_ids
+  node_desired_size   = var.eks_node_desired_size
+  node_min_size       = var.eks_node_min_size
+  node_max_size       = var.eks_node_max_size
+  node_instance_types = var.eks_node_instance_types
 }
 
 # ─── RDS ─────────────────────────────────────────────────────────────────────

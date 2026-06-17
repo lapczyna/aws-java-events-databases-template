@@ -1,6 +1,6 @@
 resource "aws_dynamodb_table" "ad_impressions" {
   name         = var.table_name
-  billing_mode = "PAY_PER_REQUEST"  # No upfront capacity planning; scales automatically
+  billing_mode = "PAY_PER_REQUEST" # No upfront capacity planning; scales automatically
   hash_key     = "impressionId"
 
   attribute {

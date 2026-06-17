@@ -1,6 +1,6 @@
 resource "aws_sqs_queue" "ad_events_dlq" {
   name                      = "${var.queue_name}-dlq"
-  message_retention_seconds = 1209600  # 14 days
+  message_retention_seconds = 1209600 # 14 days
 
   tags = { Name = "${var.queue_name}-dlq" }
 }
@@ -8,8 +8,8 @@ resource "aws_sqs_queue" "ad_events_dlq" {
 resource "aws_sqs_queue" "ad_events" {
   name                       = var.queue_name
   visibility_timeout_seconds = 60
-  message_retention_seconds  = 86400  # 1 day
-  receive_wait_time_seconds  = 20     # Long polling
+  message_retention_seconds  = 86400 # 1 day
+  receive_wait_time_seconds  = 20    # Long polling
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.ad_events_dlq.arn
