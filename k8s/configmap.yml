@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ad-platform-config
+  namespace: ad-platform
+  labels:
+    app.kubernetes.io/name: ad-platform
+data:
+  SPRING_PROFILES_ACTIVE: "aws"
+  AWS_REGION: "us-east-1"
+  DYNAMODB_TABLE_NAME: "ad-impression-events"
+  KAFKA_TOPIC_CAMPAIGN_EVENTS: "campaign-events"
+  SERVER_PORT: "8080"
+  SQS_POLLING_INTERVAL_MS: "5000"
+  LOCALSTACK_ENABLED: "false"

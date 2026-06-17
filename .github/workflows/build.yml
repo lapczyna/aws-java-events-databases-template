@@ -1,0 +1,58 @@
+name: Build & Test
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build:
+    name: Build, Unit Tests & Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build and run unit tests
+        run: mvn verify -B --no-transfer-progress
+
+      - name: Run integration tests
+        run: mvn failsafe:integration-test failsafe:verify -B --no-transfer-progress
+
+      - name: Run Cucumber BDD tests
+        run: mvn failsafe:integration-test failsafe:verify -Dgroups=bdd -B --no-transfer-progress
+        continue-on-error: false
+
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: JUnit Test Results
+          path: target/surefire-reports/*.xml,target/failsafe-reports/*.xml
+          reporter: java-junit
+
+      - name: Upload Cucumber Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cucumber-report
+          path: target/cucumber-reports/
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ad-platform
+  labels:
+    app.kubernetes.io/name: ad-platform
+    environment: production

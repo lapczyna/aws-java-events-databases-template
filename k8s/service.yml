@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ad-platform-svc
+  namespace: ad-platform
+  labels:
+    app.kubernetes.io/name: ad-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: ad-platform
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP

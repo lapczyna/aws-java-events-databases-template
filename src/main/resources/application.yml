@@ -1,0 +1,100 @@
+spring:
+  application:
+    name: ad-platform
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/adplatform}
+    username: ${DB_USERNAME:adplatform}
+    password: ${DB_PASSWORD:adplatform}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ad-platform-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      acks: all
+      retries: 3
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  compression:
+    enabled: true
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+  localstack:
+    enabled: ${LOCALSTACK_ENABLED:false}
+    endpoint: ${LOCALSTACK_ENDPOINT:http://localhost:4566}
+    access-key: ${LOCALSTACK_ACCESS_KEY:test}
+    secret-key: ${LOCALSTACK_SECRET_KEY:test}
+  sqs:
+    queue-url: ${SQS_QUEUE_URL:http://localhost:4566/000000000000/ad-events-queue}
+    polling-interval-ms: ${SQS_POLLING_INTERVAL_MS:5000}
+  dynamodb:
+    table-name: ${DYNAMODB_TABLE_NAME:ad-impression-events}
+
+kafka:
+  topics:
+    campaign-events: ${KAFKA_TOPIC_CAMPAIGN_EVENTS:campaign-events}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.enterprise.adplatform: DEBUG
+    org.hibernate.SQL: WARN
+    org.springframework.kafka: INFO

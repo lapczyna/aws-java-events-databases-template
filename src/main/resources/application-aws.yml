@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    show-sql: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+  localstack:
+    enabled: false
+  sqs:
+    queue-url: ${SQS_QUEUE_URL}
+  dynamodb:
+    table-name: ${DYNAMODB_TABLE_NAME:ad-impression-events}
+
+logging:
+  level:
+    root: WARN
+    com.enterprise.adplatform: INFO

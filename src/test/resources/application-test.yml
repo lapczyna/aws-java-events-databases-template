@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      acks: all
+
+aws:
+  region: us-east-1
+  localstack:
+    enabled: true
+    endpoint: http://localhost:4566
+    access-key: test
+    secret-key: test
+  sqs:
+    queue-url: http://localhost:4566/000000000000/ad-events-queue
+    polling-interval-ms: 60000
+  dynamodb:
+    table-name: ad-impression-events-test
+
+kafka:
+  topics:
+    campaign-events: campaign-events-test
+
+logging:
+  level:
+    com.enterprise.adplatform: DEBUG
