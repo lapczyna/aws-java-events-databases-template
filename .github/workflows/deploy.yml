@@ -1,9 +1,14 @@
 name: Deploy to EKS
 
-# Triggered automatically once the container workflow succeeds.
-# Only proceeds when the triggering run came from a semver tag (v1.2.3),
-# ensuring no code lands in production without a deliberate release tag.
+# Triggered automatically once the container workflow succeeds on a semver tag,
+# or manually from the Actions tab (useful for re-deploys and hotfixes).
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to deploy (e.g. v1.2.3)"
+        required: true
+        type: string
   workflow_run:
     workflows: ["Container Build & Publish"]
     types: [completed]
@@ -17,12 +22,15 @@ jobs:
     name: Deploy to EKS
     runs-on: ubuntu-latest
 
-    # Guard: only deploy when the container build succeeded on a semver tag.
-    # head_branch holds the tag name (e.g. "v1.2.3") for tag-push triggered runs.
+    # Guard: for workflow_run, only deploy when the container build succeeded on
+    # a semver tag. Manual dispatch (workflow_dispatch) always proceeds.
     if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'v') &&
-      contains(github.event.workflow_run.head_branch, '.')
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        startsWith(github.event.workflow_run.head_branch, 'v') &&
+        contains(github.event.workflow_run.head_branch, '.')
+      )
 
     permissions:
       id-token: write  # required for OIDC → AWS credential exchange
@@ -42,9 +50,14 @@ jobs:
       - name: Derive image tag
         id: tag
         run: |
-          # docker/metadata-action strips the leading 'v' for semver tags,
-          # so v1.2.3 → image tag 1.2.3.
-          RAW="${{ github.event.workflow_run.head_branch }}"
+          # Manual dispatch supplies the tag directly; workflow_run uses the
+          # triggering branch name (which equals the tag for tag-push events).
+          # docker/metadata-action strips the leading 'v' (v1.2.3 → 1.2.3).
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW="${{ inputs.tag }}"
+          else
+            RAW="${{ github.event.workflow_run.head_branch }}"
+          fi
           VERSION="${RAW#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}" >> "$GITHUB_OUTPUT"
