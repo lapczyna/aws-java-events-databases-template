@@ -1,0 +1,136 @@
+name: Deploy to EKS
+
+# Triggered automatically once the container workflow succeeds.
+# Only proceeds when the triggering run came from a semver tag (v1.2.3),
+# ensuring no code lands in production without a deliberate release tag.
+on:
+  workflow_run:
+    workflows: ["Container Build & Publish"]
+    types: [completed]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to EKS
+    runs-on: ubuntu-latest
+
+    # Guard: only deploy when the container build succeeded on a semver tag.
+    # head_branch holds the tag name (e.g. "v1.2.3") for tag-push triggered runs.
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v') &&
+      contains(github.event.workflow_run.head_branch, '.')
+
+    permissions:
+      id-token: write  # required for OIDC → AWS credential exchange
+      contents: read
+      packages: read   # pull image from GHCR
+
+    # Requires the "production" environment to be configured in repo Settings.
+    # Add required reviewers there to enforce a manual approval gate.
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Derive image tag
+        id: tag
+        run: |
+          # docker/metadata-action strips the leading 'v' for semver tags,
+          # so v1.2.3 → image tag 1.2.3.
+          RAW="${{ github.event.workflow_run.head_branch }}"
+          VERSION="${RAW#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # Exchanges the GitHub Actions OIDC token for short-lived AWS credentials.
+      # No long-lived AWS secrets are stored in GitHub.
+      # Requires:
+      #   - AWS_DEPLOY_ROLE_ARN secret set in repo/environment settings
+      #   - The IAM role trust policy allows this repo's tag-push OIDC token
+      #     (provisioned by terraform/modules/iam/github-oidc.tf)
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Update kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig \
+            --name "${{ vars.EKS_CLUSTER_NAME }}" \
+            --region "${{ vars.AWS_REGION }}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Roll out new image
+        run: |
+          kubectl set image deployment/ad-platform \
+            ad-platform=${{ steps.tag.outputs.image }} \
+            --namespace ad-platform
+
+          kubectl annotate deployment/ad-platform \
+            kubernetes.io/change-cause="Deploy ${{ steps.tag.outputs.version }} via run #${{ github.run_id }}" \
+            --namespace ad-platform \
+            --overwrite
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/ad-platform \
+            --namespace ad-platform \
+            --timeout=10m
+
+      - name: Smoke test — health endpoint
+        run: |
+          sleep 15
+          INGRESS=$(kubectl get ingress ad-platform-ingress \
+            --namespace ad-platform \
+            -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+
+          if [ -n "$INGRESS" ]; then
+            echo "Smoke testing https://${INGRESS}/actuator/health"
+            curl --fail --silent --show-error \
+              --retry 5 --retry-delay 10 --retry-connrefused \
+              "https://${INGRESS}/actuator/health"
+          else
+            echo "No ingress hostname yet — verifying pod readiness."
+            kubectl wait pod \
+              --for=condition=Ready \
+              --selector=app=ad-platform \
+              --namespace=ad-platform \
+              --timeout=5m
+          fi
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed — rolling back to previous version."
+          kubectl rollout undo deployment/ad-platform --namespace ad-platform
+          kubectl rollout status deployment/ad-platform \
+            --namespace ad-platform \
+            --timeout=5m
+
+      - name: Write job summary
+        if: success()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Deployment Successful
+
+          | Field   | Value |
+          |---------|-------|
+          | Version | \`${{ steps.tag.outputs.version }}\` |
+          | Image   | \`${{ steps.tag.outputs.image }}\` |
+          | Cluster | \`${{ vars.EKS_CLUSTER_NAME }}\` |
+          | Commit  | \`${{ github.event.workflow_run.head_sha }}\` |
+          EOF

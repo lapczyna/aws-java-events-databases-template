@@ -105,3 +105,14 @@ variable "sqs_queue_name" {
   type        = string
   default     = "ad-events-queue"
 }
+
+variable "github_org" {
+  description = "GitHub organisation or user that owns the repository (used to scope the CD IAM role)"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository name without the org prefix"
+  type        = string
+  default     = "aws-java-events-databases-template"
+}

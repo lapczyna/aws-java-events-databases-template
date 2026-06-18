@@ -68,4 +68,28 @@ module "iam" {
   oidc_provider_url  = module.eks.oidc_provider_url
   dynamodb_table_arn = module.dynamodb.table_arn
   sqs_queue_arn      = module.sqs.queue_arn
+  github_org         = var.github_org
+  github_repo        = var.github_repo
+}
+
+# ─── EKS Access Entry: GitHub Actions deployer ───────────────────────────────
+# Grants the CD IAM role edit-scoped Kubernetes RBAC in the ad-platform
+# namespace via the EKS Access Entries API (no aws-auth ConfigMap required).
+resource "aws_eks_access_entry" "github_deployer" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = module.iam.github_actions_deploy_role_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "github_deployer" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = module.iam.github_actions_deploy_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+
+  access_scope {
+    type       = "namespace"
+    namespaces = ["ad-platform"]
+  }
+
+  depends_on = [aws_eks_access_entry.github_deployer]
 }

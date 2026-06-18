@@ -43,15 +43,17 @@ jobs:
 
       - name: Terraform Plan (dry-run, no AWS credentials)
         id: plan
+        # Without AWS credentials the provider hangs on auth; 2 min timeout
+        # keeps the job fast. continue-on-error lets the PR comment still post.
+        # To enable a real plan, add OIDC AWS credentials before this step.
+        timeout-minutes: 2
+        continue-on-error: true
         run: |
           terraform plan \
             -var="rds_username=placeholder" \
             -var="rds_password=placeholder" \
             -out=tfplan.binary \
-            -no-color 2>&1 | head -200 || true
-        # Plan requires real AWS credentials; this step documents intent only.
-        # For a real plan, configure AWS credentials via OIDC or IAM role.
-        continue-on-error: true
+            -no-color 2>&1 | head -200
 
       - name: Comment Plan on PR
         uses: actions/github-script@v7

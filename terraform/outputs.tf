@@ -38,3 +38,8 @@ output "irsa_role_arn" {
   description = "IAM role ARN for IRSA"
   value       = module.iam.irsa_role_arn
 }
+
+output "github_actions_deploy_role_arn" {
+  description = "IAM role ARN assumed by GitHub Actions during CD deployments — set as AWS_DEPLOY_ROLE_ARN secret"
+  value       = module.iam.github_actions_deploy_role_arn
+}
