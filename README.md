@@ -433,3 +433,7 @@ To add Cognito authentication, replace the `anyRequest().permitAll()` block with
 | `container.yml` | push to main / tags | Docker build, Trivy scan, push to GHCR |
 | `terraform.yml` | changes to `terraform/` | fmt, validate, plan (no auto-apply) |
 | `k8s-validate.yml` | changes to `k8s/` | kubeval + kubeconform manifest validation |
+
+### Branch Protection
+
+`main` is a protected branch: changes must go through a pull request, and `Build & Unit Tests`, `Integration & Cucumber BDD Tests`, and `Build Docker Image` must pass before merging. Force pushes and branch deletion are disabled. Workflow runs on pull requests from external contributors require maintainer approval before they execute.
